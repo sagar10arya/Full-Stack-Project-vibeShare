@@ -1,4 +1,4 @@
-// lass that defines the structure for an API response
+// class that defines the structure for an API response
 class ApiResponse {
     constructor(statusCode, data, message = "Success"){
         this.statusCode = statusCode    // Stores the provided HTTP status code
