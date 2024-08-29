@@ -18,7 +18,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     /* get user details from the frontend  */
     const {fullName, email, username, password} = req.body
-    console.log("Email: ", email)
+    // console.log(req.body)    // console.log("Email: ", email)
     
     /*   get user details from the frontend */
     
@@ -32,17 +32,26 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     /* Check if user already exists -> email, username */
-    const existedUser = User.findOne({
+    const existedUser = await User.findOne({
         $or: [{ email }, { username }]
     })
     
     if(existedUser) {
         throw new ApiError(409, "User with email or username already exists.")
     }
-
+    
+    // console.log(req.files)
     /* check for images and avatar */
     const avatarLocalPath = req.files?.avatar[0]?.path;
-    const coverImageLocalPath = req.files?.coverImage[0]?.path;
+
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path;    // --> Error     
+    // const coverImageLocalPath = req.files?.coverImage?.[0]?.path;  // -> above line errro solved and this will run       
+    // coverImageLocalPath can also be checked as following
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage[0].path
+    }
+
 
     if(!avatarLocalPath){
         throw new ApiError(400, "Avatar file is required.")
@@ -50,7 +59,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
     /* Upload them to cloudinary, avatar */
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-    const coverImage = await uploadOnCloudinary(coverImageLocalPath)
+    const coverImage =  await uploadOnCloudinary(coverImageLocalPath)
 
     if(!avatar){
         throw new ApiError(400, "Avatar file is required.")
@@ -74,7 +83,7 @@ const registerUser = asyncHandler( async (req, res) => {
     /* check for user creation */
     if(!createdUser){
         throw new ApiError(500, "Something went wrong while registering user")
-    }
+    }   
 
     /* return response*/
     return res.status(201).json(
