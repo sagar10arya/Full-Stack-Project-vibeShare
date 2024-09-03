@@ -1,5 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import fs from "fs";
+import { ApiError } from './ApiError';
+import { ApiResponse } from './ApiResponse';
 
 // Configuration
 cloudinary.config({ 
@@ -21,8 +23,27 @@ const uploadOnCloudinary = async (localFilePath) => {
 
     } catch (error) {
         fs.unlinkSync(localFilePath) // remove the locally saved temporary file as the upload operation got failed
-        return null;
+        return new ApiError(400, error, "Error uploading file to Cloudinary")
     }
 }
 
-export {uploadOnCloudinary}
+const deleteFromCloudinary = async (videoId) => {
+    try {
+        if (!videoId) {
+            throw new Error("Public ID is required for deletion");
+        }
+
+        const response = await cloudinary.uploader.destroy(videoId, { resource_type: "auto"})
+        
+        return response
+        .status(200)
+        .json(new ApiResponse(200, response, "File deleted successfully"))
+
+        
+    } catch (error) {
+        console.error('Error deleting file from Cloudinary:', error);
+        return new ApiError(400, error, "Error deleting file from Cloudinary")
+    }
+}
+
+export {uploadOnCloudinary, deleteFromCloudinary}
