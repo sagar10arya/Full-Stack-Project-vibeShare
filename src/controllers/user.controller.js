@@ -210,6 +210,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   if (!incomingRefreshToken) {
     throw new ApiError(401, "Unauthorized request");
   }
+  // console.log("Incoming Refresh Token:", incomingRefreshToken);
 
   try {
     const decodedToken = jwt.verify(
@@ -247,6 +248,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
         )
       );
   } catch (error) {
+    console.error("JWT Verification Error:", error);
     throw new ApiError(401, error?.message || "Invalid refresh token");
   }
 });
@@ -254,25 +256,38 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
 
-  // const { oldPassword, newPassword, confirmPassword } = req.body
-  // if(!(newPassword === confirmPassword)){
-  //     throw new ApiError(400, "Passwords do not match")
-  // }
+  if (!newPassword) {
+    return res
+        .status(301)
+        .json(new ApiError(301, {}, "Pls Provide New Password"));
+}
 
+  // Fetch the user and ensure the password field is selected
   const user = await User.findById(req.user._id);
 
-  const isPasswordCorrect = user.isPasswordCorrect(oldPassword);
 
-  if (!isPasswordCorrect) {
-    throw new ApiError(400, "Invalid old password");
+  // If no user is found
+  if (!user) {
+    throw new ApiError(404, "User not found.");
   }
 
-  user.password = newPassword;
-  await user.save({ validateBeforeSave: falsee });
+  // Ensure that oldPassword is provided and properly checked
+  if (!user.password) {
+    throw new ApiError(500, "User has no stored password.");
+  }
 
-  return res
-    .status(200)
-    .json(new ApiResponse(200, {}, "Password Changed Successfully"));
+  // Check if the old password matches the stored password
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid old password.");
+  }
+
+  // Update the user's password
+  user.password = newPassword;  // Pre-save hook will hash the password
+  await user.save({ validateBeforeSave: false });
+
+  return res.status(200).json(new ApiResponse(200, {}, "Password changed successfully."));
 });
 
 const getCurrentUser = asyncHandler(async (req, res) => {
@@ -288,7 +303,7 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
     throw new ApiError(400, "All fields are required");
   }
 
-  const user = User.findByIdAndUpdate(
+  const user = await User.findByIdAndUpdate(
     req.user?._id,
     {
       $set: {
@@ -485,8 +500,6 @@ const getWatchHistory = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, user[0].watchHistory, "Watch history fetched successfully"))
 
 })
-
-
 
 
 export {
