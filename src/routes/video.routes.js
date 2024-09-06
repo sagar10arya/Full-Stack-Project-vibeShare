@@ -1,5 +1,6 @@
 import { Router } from "express"
 import { verifyJWT } from "../middlewares/auth.middleware.js"
+import {upload} from "../middlewares/multer.middleware.js"
 import {    
         getAllVideos,
         publishAVideo,
@@ -11,22 +12,24 @@ import {
 
 const router = Router()
 
-// Route to get all videos with query parameters
-router.route("/videos").get(getAllVideos);
+// Publishing A video
+router.route("/publish-video").post(verifyJWT, upload.single("videoFile"), publishAVideo);
 
-// Route to publish a new video (POST request to create)
-router.route("/publish-video").post(verifyJWT, publishAVideo);
+// Other Routes
+
+// Route to get all videos with query parameters
+router.route("/all-videos").get(getAllVideos);
 
 // Route to get a video by its ID
-router.route("/videos/:videoId").get(getVideoById);
+router.route("/c/:videoId").get(getVideoById);
 
 // Route to update a video by its ID
-router.route("/videos/:videoId").patch(verifyJWT, updateVideo);
+router.route("/update-video/:videoId").patch(verifyJWT, updateVideo);
 
 // Route to delete a video by its ID
-router.route("/videos/:videoId").delete(verifyJWT, deleteVideo);
+router.route("/delete-video/:videoId").delete(verifyJWT, deleteVideo);
 
 // Route to toggle the publication status of a video
-router.patch('/videos/:videoId/toggle-status', verifyJWT, togglePublishStatus);
+router.route("/toggle-status/:videoId").patch(verifyJWT, togglePublishStatus);
 
 export default router;

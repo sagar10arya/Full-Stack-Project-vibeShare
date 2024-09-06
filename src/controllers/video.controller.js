@@ -110,6 +110,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
+
     const { title, description} = req.body
 
     // Validate required fields
@@ -117,11 +118,13 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Title and description are required.");
     }
 
-    // Check if a video file was uploaded and get its local path
-    const videoFileLocalPath = req.files?.videoFile?.[0]?.path
-    if(!videoFileLocalPath){
-        throw new ApiError(400, "Video is required")
+    // Check if a video file was uploaded
+    if (!req.file || !req.file.path) {
+        throw new ApiError(400, 'Video file is required.');
     }
+
+    // Check if a video file was uploaded and get its local path
+    const videoFileLocalPath = req.file.path
 
     // Upload the video to Cloudinary
     const videoFileUpload = await uploadOnCloudinary(videoFileLocalPath, {
@@ -129,6 +132,7 @@ const publishAVideo = asyncHandler(async (req, res) => {
         folder: 'videos',
         eager: [  { width: 300, crop: "scale", format: "jpg" } ]    // Example transformation to create a thumbnail 
     })
+
     /*After applying this eager transformation, Cloudinary will return an array of transformed resources in 
     videoFileUpload.eager. The secure_url of the first item in this array is typically the thumbnail. */
 
@@ -138,14 +142,15 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
     // Thumbnail
     const thumbnailUrl = videoFileUpload.eager?.[0]?.secure_url || videoFileUpload.secure_url; 
+    // console.log("Thumbnail: ",thumbnailUrl);
 
     // Prepare the video data for saving to the database
     const videoUpload = await Video.create({
         title,
         description,
-        videoFile: videoFile.secure_url,
+        videoFile: videoFileUpload.secure_url,
         thumbnail: thumbnailUrl,
-        duration: videoFile.duration,   // Cloudinary should return the duration in seconds
+        duration: videoFileUpload.duration,   // Cloudinary should return the duration in seconds
         views: 0,
         owner: req.user._id
     })
@@ -154,11 +159,11 @@ const publishAVideo = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to save video details to the database.")
     }
 
-    // deletes the local video file           ( check )
-    const fs = require('fs');
-    fs.unlink(videoFileLocalPath, (err) => {
-        if (err) console.error('Failed to delete local file:', err);
-    });
+    // deletes the local video file
+    // const fs = require('fs');
+    // fs.unlink(videoFileLocalPath, (err) => {
+    //     if (err) console.error('Failed to delete local file:', err);
+    // });
 
     return res
     .status(200)
@@ -230,9 +235,17 @@ const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
         
     // Validate the videoId format
-    // if(!mongoose.Types.ObjectId.isValid(videoId)){
-    //     throw new ApiError(400, "Invalid Video ID format")
-    // }
+    if(!mongoose.Types.ObjectId.isValid(videoId)){
+        throw new ApiError(400, "Invalid Video ID format")
+    }
+
+    //  Extract video ID from the video URL
+    const getCloudinaryPublicId = (url) => {
+        const parts = url.split('/');
+        const fileWithExtension = parts[parts.length - 1];
+        const publicId = fileWithExtension.substring(0, fileWithExtension.lastIndexOf('.'));
+        return publicId;
+    };
 
     const video = await Video.findById(videoId)
 
@@ -247,7 +260,7 @@ const deleteVideo = asyncHandler(async (req, res) => {
     }
 
     // Delete the video file from Cloudinary
-    const cloudinaryResult = await deleteFromCloudinary(video.videoFile)
+    const cloudinaryResult = await deleteFromCloudinary(getCloudinaryPublicId(video.videoFile))
 
     if (!cloudinaryResult.success) {
         throw new ApiError(500, "Failed to delete video from Cloudinary");
@@ -259,9 +272,13 @@ const deleteVideo = asyncHandler(async (req, res) => {
 
 })
 
+
 // Controller to toggle the publication status of a video
 const togglePublishStatus = asyncHandler(async (req, res) => {
-    const { videoId } = req.params
+    // const { videoId } = req.params
+    const {videoId} = req.params.id
+
+    console.log(`Received request to toggle status for video ID: ${videoId}`);
 
     const video = await Video.findById(videoId)
     if (!video) {
@@ -274,9 +291,12 @@ const togglePublishStatus = asyncHandler(async (req, res) => {
     // Save the updated video document
     const updatedVideo = await video.save();
 
+    // Log the status change
+    console.log(`Video ID ${videoId} publish status toggled to ${updatedVideo.isPublished}`);
+
     return res
     .status(200)
-        .json(new ApiResponse(200, updatedVideo, "Video status toggled successfully"));
+    .json(new ApiResponse(200, updatedVideo, "Video status toggled successfully"));
 })
 
 export {

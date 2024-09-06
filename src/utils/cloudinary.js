@@ -27,17 +27,22 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
+// Extract public ID from the video URL
+
+
 const deleteFromCloudinary = async (videoId) => {
     try {
         if (!videoId) {
-            throw new Error("Public ID is required for deletion");
+            throw new Error("Video ID is required for deletion");
         }
 
-        const response = await cloudinary.uploader.destroy(videoId, { resource_type: "auto"})
+        const response = await cloudinary.uploader.destroy(videoId, { resource_type: "video"})
         
-        return response
-        .status(200)
-        .json(new ApiResponse(200, response, "File deleted successfully"))
+        // Check if deletion was successful
+        if (response.result !== 'ok') {
+            throw new Error(`Cloudinary deletion failed: ${response.result}`);
+        }
+        return { success: true, response };
 
         
     } catch (error) {
