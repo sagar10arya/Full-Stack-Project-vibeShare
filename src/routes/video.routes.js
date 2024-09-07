@@ -12,8 +12,13 @@ import {
 
 const router = Router()
 
+router.use(verifyJWT); // Apply verifyJWT middleware to all routes in this file
+
+
+/*   TODO ==> changes to be made   */
+
 // Publishing A video
-router.route("/publish-video").post(verifyJWT, upload.single("videoFile"), publishAVideo);
+router.route("/publish-video").post(upload.single("videoFile"), publishAVideo);
 
 // Other Routes
 
@@ -24,12 +29,12 @@ router.route("/all-videos").get(getAllVideos);
 router.route("/c/:videoId").get(getVideoById);
 
 // Route to update a video by its ID
-router.route("/update-video/:videoId").patch(verifyJWT, updateVideo);
+router.route("/update-video/:videoId").patch(updateVideo);
 
 // Route to delete a video by its ID
-router.route("/delete-video/:videoId").delete(verifyJWT, deleteVideo);
+router.route("/delete-video/:videoId").delete(deleteVideo);
 
 // Route to toggle the publication status of a video
-router.route("/toggle-status/:videoId").patch(verifyJWT, togglePublishStatus);
+router.route("/toggle-status/:videoId").patch(togglePublishStatus);
 
 export default router;
