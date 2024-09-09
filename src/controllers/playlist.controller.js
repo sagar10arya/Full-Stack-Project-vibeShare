@@ -1,5 +1,6 @@
-import mongoose, {isValidObjectId} from "mongoose"
-import {Playlist, Video} from "../models/playlist.model.js"
+import mongoose  from "mongoose"
+import {Playlist} from "../models/playlist.model.js"
+import { Video } from "../models/video.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import {asyncHandler} from "../utils/asyncHandler.js"
@@ -37,6 +38,8 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Invalid user ID format.")
     }
 
+    // Debug log to ensure userId is being passed
+
     // 2. Pagination parameters
     const page = parseInt(req.query.page) || 1  // Default : page 1
     const limit = parseInt(req.query.limit) || 10  // Default : 10 playlists per page
@@ -48,7 +51,7 @@ const getUserPlaylists = asyncHandler(async (req, res) => {
     .sort({createdAt: -1})
     .select("name description videos createdAt")
 
-    const totalPlaylists = await Playlist.countDocuments({ owner: user })
+    const totalPlaylists = await Playlist.countDocuments({ owner: userId })
 
     const userPlaylists = {
         totalPlaylists,
@@ -105,12 +108,12 @@ const addVideoToPlaylist = asyncHandler(async (req, res) => {
     }
 
     // Check if the video is already in the playlist
-    if(playlist.video.includes(videoId)){
+    if(playlist.videos.includes(videoId.toString())){
         throw new ApiError(400, "Video already exists in the playlist")
     }
 
     // Add the video to the playlist
-    playlist.video.push(videoId);
+    playlist.videos.push(videoId);
 
     // Save the updated playlist
     await playlist.save();
@@ -137,7 +140,7 @@ const removeVideoFromPlaylist = asyncHandler(async (req, res) => {
     }
 
     // Check if the video exists in the playlist
-    const videoExists = playlist.video.includes(videoId)
+    const videoExists = playlist.videos.includes(videoId)
     if(!videoExists){
         throw new ApiError(400, "Video not found in the playlist")
     }
